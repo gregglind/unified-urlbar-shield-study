@@ -1,16 +1,14 @@
-this.EXPORTED_SYMBOLS = [
-  "BrowserListener",
-];
+const {Ci, Cu, Cc} = require("chrome");
 
-const STYLE_URL = "chrome://unified-urlbar/content/style.css";
+const STYLE_URL = require("sdk/self").data.url("style.css");
 const SEARCH_BAR_WIDGET_ID = "search-container";
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
-const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/CustomizableUI.jsm");
-Cu.import("chrome://unified-urlbar/content/Panel.jsm");
+
+const { Panel } = require("./Panel.js");
 
 var gBranch = "control";
 var gBrowsers = null;
@@ -151,3 +149,6 @@ function whenWindowLoaded(win, callback) {
     }
   }, true);
 }
+
+// require-ify
+exports.BrowserListener = BrowserListener;
