@@ -1,0 +1,5 @@
+{
+  "extensions.unified-urlbar-shield-study-1@experiments.mozilla.org.variation": "unified",
+  "extensions.sdk.console.logLevel": "debug",
+  "general.warnOnAboutConfig": false
+}

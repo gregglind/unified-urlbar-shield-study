@@ -64,13 +64,13 @@
 }
 
 #urlbar-search-settings2 {
-  list-style-image: url("chrome://unified-urlbar/content/gear.svg#gear");
+  list-style-image: url("./gear.svg#gear");
   background-position: left center;
   border-bottom: none;
 }
 
 #urlbar-search-settings2:hover {
-  list-style-image: url("chrome://unified-urlbar/content/gear.svg#gear-inverted");
+  list-style-image: url("./gear.svg#gear-inverted");
   background-color: Highlight;
 }
 
