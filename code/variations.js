@@ -10,6 +10,8 @@ const SUGGEST_PREF = "browser.urlbar.suggest.searches";
 let prefSvc = require("sdk/preferences/service");
 let prefs = require("sdk/simple-prefs").prefs;
 
+let { educate } = require("./content/education");
+
 // BUG, are these robust *enough*?  Generalize to prefs in general.
 function setShadowPref (name, value) {
   let shadow = name + ".shadow";
@@ -36,6 +38,11 @@ function resetShadowPref (name) {
 let isCalled = false;
 function modify (branch) {
   if (!isCalled) {
+    switch (branch) {
+      case 'unified': {
+        educate()
+      }
+    }
     setShadowPref(TEL_PREF, true);
     setShadowPref(SUGGEST_PREF, true);
     isCalled = true;
