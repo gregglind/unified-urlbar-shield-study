@@ -1,11 +1,8 @@
-this.EXPORTED_SYMBOLS = [
-  "Telemetry",
-];
+const {Ci, Cu, Cc} = require("chrome");
 
 const SEARCH_SUGGESTIONS_OPT_IN_CHOICE_PREF =
   "browser.urlbar.userMadeSearchSuggestionsChoice";
 
-const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://gre/modules/Preferences.jsm");
 Cu.import("resource:///modules/BrowserUITelemetry.jsm");
@@ -135,3 +132,7 @@ function addSearchSuggestionsOptInTelemetry() {
   let optedIn = Preferences.get("browser.urlbar.suggest.searches");
   Telemetry.setValue("suggestionsEnabled", optedIn);
 }
+
+
+exports.Telemetry = Telemetry;
+

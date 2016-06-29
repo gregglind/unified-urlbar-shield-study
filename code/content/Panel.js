@@ -1,13 +1,10 @@
-this.EXPORTED_SYMBOLS = [
-  "Panel",
-];
+const {Ci, Cu, Cc} = require("chrome");
 
 const EXISTING_FOOTER_ID = "urlbar-search-footer";
 const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
-const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("chrome://unified-urlbar/content/Telemetry.jsm");
+const { Telemetry } = require("./Telemetry");
 
 this.Panel = function (panelElt) {
   this.panelElement = panelElt;
@@ -536,3 +533,5 @@ this.Panel.prototype = {
     this._selectedButton = null;
   },
 };
+
+exports.Panel = Panel;
