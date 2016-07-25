@@ -12,6 +12,13 @@ Cu.import("chrome://unified-urlbar/content/Telemetry.jsm");
 this.Panel = function (panelElt) {
   this.panelElement = panelElt;
   this._initPanelElement();
+  try {
+    this._initTipElement();
+  } catch (ex) {
+    Cu.reportError(ex);
+  }
+  this.panelElement.addEventListener("popupshowing", this);
+  this.panelElement.addEventListener("popuphiding", this);
   this._initKeyHandler();
   this.urlbar.addEventListener("input", this);
 };
@@ -39,11 +46,105 @@ this.Panel.prototype = {
     this.urlbar.removeEventListener("input", this);
 
     this.panelElement.removeEventListener("popupshowing", this);
+    this.panelElement.removeEventListener("popuphiding", this);
 
     this.footer.remove();
     if (this._existingFooter) {
       this._existingFooterParent.appendChild(this._existingFooter);
     }
+
+    this._uninitTipElement();
+  },
+
+  _shouldShowHint(decreaseCounter = false) {
+    let Preferences = Cu.import("resource://gre/modules/Preferences.jsm", {}).Preferences;
+    if (this._showSuggestions === undefined) {
+      this._showSuggestions = Preferences.get("browser.urlbar.suggest.searches", false);
+    }
+    if (this._tipShownCount === undefined) {
+      // Set to 1 more than the actual number of times the tip should be shown.
+      const SHOW_TIP_DEFAULT_COUNT = 5;
+      this._tipShownCount = Preferences.get("browser.urlbar.experiment.unified-urlbar.tipShownCount",
+                                            SHOW_TIP_DEFAULT_COUNT);
+    }
+
+    if (this._tipShownCount > 0 && decreaseCounter) {
+      Preferences.set("browser.urlbar.experiment.unified-urlbar.tipShownCount", --this._tipShownCount);
+    }
+    return this.__shouldShowHint = this._tipShownCount > 0 && this._showSuggestions;
+  },
+
+  _initTipElement() {
+    if (!this._shouldShowHint()) {
+      return;
+    }
+
+    let tipContainer = this.document.createElementNS(XUL_NS, "hbox");
+    tipContainer.id = "urlbar-tip-container";
+    tipContainer.setAttribute("flex", "1");
+    tipContainer.setAttribute("align", "center");
+    this.tipContainer = tipContainer;
+
+    let icon = this.document.createElementNS(XUL_NS, "image");
+    icon.className = "ac-site-icon";
+    tipContainer.appendChild(icon);
+    this.tipIcon = icon;
+
+    let titleBox = this.document.createElementNS(XUL_NS, "hbox");
+    titleBox.id = "urlbar-tip-title";
+    tipContainer.appendChild(titleBox);
+
+    let title = this.document.createElementNS(XUL_NS, "description");
+    title.className = "ac-title-text";
+    title.textContent = "Firefox";
+    titleBox.appendChild(title);
+
+    let tipBox = this.document.createElementNS(XUL_NS, "hbox");
+    tipBox.id = "urlbar-tip-box";
+    tipContainer.setAttribute("align", "center");
+    tipContainer.appendChild(tipBox);
+
+    let tip = this.document.createElementNS(XUL_NS, "description");
+    tip.innerHTML = `<span class="emoji">&#x1f4a1;</span><span class="bold">Tip:</span> Results with a magnifying glass are search suggestions. They might be what you're looking for!<span class="emoji">&#x1F604;</span>`;
+    tipBox.appendChild(tip);
+
+    let notification = this.panelElement.searchSuggestionsNotification;
+    for (let child of notification.childNodes) {
+      child.collapsed = true;
+    }
+    notification.setAttribute("tip", "true");
+    notification.appendChild(tipContainer);
+  },
+
+  _uninitTipElement() {
+    if (this.tipContainer) {
+      this.tipContainer.remove();
+      delete this.tipContainer;
+    }
+    let notification = this.panelElement.searchSuggestionsNotification;
+    notification.removeAttribute("tip");
+    for (let child of notification.childNodes) {
+      child.collapsed = false;
+    }
+  },
+
+  _updateTip() {
+    if (!this._shouldShowHint(true)) {
+      if (this.tipContainer) {
+        this._uninitTipElement();
+        this.document.getAnonymousElementByAttribute(this.panelElement, "anonid", "search-suggestions-notification")
+                     .style.visibility = "collapse";
+      }
+      return;
+    }
+
+    let iconStart = this.panelElement.siteIconStart;
+    if (iconStart) {
+      this.tipIcon.style.marginInlineStart = iconStart + "px";
+    }
+    this.document.getAnonymousElementByAttribute(this.panelElement, "anonid", "search-suggestions-notification")
+                 .style.visibility = "visible";
+    this.tipContainer.setAttribute("animate", "true");
   },
 
   _initPanelElement() {
@@ -71,8 +172,6 @@ this.Panel.prototype = {
     hbox.appendChild(this.settingsButton);
 
     this.panelElement.appendChild(footer);
-
-    this.panelElement.addEventListener("popupshowing", this);
   },
 
   _makeFooter() {
@@ -300,6 +399,13 @@ this.Panel.prototype = {
     this.selectedButton = null;
     this._buildButtonList();
     this._updateHeader();
+    this._updateTip();
+  },
+
+  _onPopuphiding(event) {
+    if (this.tipContainer) {
+      this.tipContainer.removeAttribute("animate");
+    }
   },
 
   _onMouseover(event) {

@@ -24,21 +24,41 @@ this.Telemetry = Object.freeze({
 
   destroy() {
     Services.obs.removeObserver(this, "autocomplete-did-enter-text", false);
-    Preferences.ignore(SEARCH_SUGGESTIONS_OPT_IN_CHOICE_PREF);
+    try {
+      Preferences.ignore(SEARCH_SUGGESTIONS_OPT_IN_CHOICE_PREF);
+    } catch (ex) {}
     gValues.clear();
   },
 
   observe: function(aSubject, aTopic, aData) {
     let input = aSubject.QueryInterface(Ci.nsIAutoCompleteInput);
-    if (!input || input.id != "urlbar" || input.inPrivateContext ||
-        input.popup.selectedIndex == -1) {
+    if (!input || input.id != "urlbar" || input.inPrivateContext) {
       return;
     }
+
     let controller = input.popup.view.QueryInterface(Ci.nsIAutoCompleteController);
     let idx = input.popup.selectedIndex;
+
+    // Count when the user is direct typing the current engine to search.
+    if (idx <= 0) {
+      try {
+        let uri = Services.uriFixup.createFixupURI(input.textValue, 0);
+        let host = uri.host.replace(/^www./, "");
+        let engineHost = Services.io.newURI(Services.search.currentEngine.searchForm, null, null)
+                                    .host.replace(/^www./, "");
+        if (uri.path == "/" && host == engineHost) {
+          this.incrementValue("userTypedCurrentEngine");
+        }
+      } catch (ex) {}
+    }
+
+    if (idx == -1) {
+      return;
+    }
     let value = controller.getValueAt(idx);
     let action = input._parseActionUrl(value);
     let actionType;
+
     if (action) {
       actionType = action.type == "searchengine" && action.params.searchSuggestion ?
                       "searchsuggestion" : action.type;
@@ -80,6 +100,9 @@ this.Telemetry = Object.freeze({
     }
 
     switch(key) {
+      case "userTypedCurrentEngine":
+        recordSearch(null, "manual");
+        break;
       case "searchSettingsClicked":
         BrowserUITelemetry.countSearchSettingsEvent("urlbar");
         break;
