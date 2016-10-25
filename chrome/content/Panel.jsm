@@ -1,22 +1,23 @@
+"use strict";
+
 this.EXPORTED_SYMBOLS = [
-  "Panel",
+  "Panel"
 ];
 
 const EXISTING_FOOTER_ID = "urlbar-search-footer";
 const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
+Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("chrome://unified-urlbar/content/Telemetry.jsm");
+Cu.import("resource://gre/modules/Preferences.jsm");
+
+XPCOMUtils.defineLazyModuleGetter(this, "UnifiedUrlbar",
+                                  "chrome://unified-urlbar/content/UnifiedUrlbar.jsm");
 
 this.Panel = function (panelElt) {
   this.panelElement = panelElt;
   this._initPanelElement();
-  try {
-    this._initTipElement();
-  } catch (ex) {
-    Cu.reportError(ex);
-  }
   this.panelElement.addEventListener("popupshowing", this);
   this.panelElement.addEventListener("popuphiding", this);
   this._initKeyHandler();
@@ -56,28 +57,26 @@ this.Panel.prototype = {
     this._uninitTipElement();
   },
 
-  _shouldShowHint(decreaseCounter = false) {
-    let Preferences = Cu.import("resource://gre/modules/Preferences.jsm", {}).Preferences;
-    if (this._showSuggestions === undefined) {
-      this._showSuggestions = Preferences.get("browser.urlbar.suggest.searches", false);
-    }
-    if (this._tipShownCount === undefined) {
-      // Set to 1 more than the actual number of times the tip should be shown.
-      const SHOW_TIP_DEFAULT_COUNT = 5;
-      this._tipShownCount = Preferences.get("browser.urlbar.experiment.unified-urlbar.tipShownCount",
-                                            SHOW_TIP_DEFAULT_COUNT);
+  _shouldShowHint() {
+    const SHOW_TIP_DEFAULT_COUNT = 5;
+    let tipShownCount = SHOW_TIP_DEFAULT_COUNT;
+    if (Preferences.has("browser.urlbar.experiment.unified-urlbar.tipShownCount")) {
+      tipShownCount = Preferences.get("browser.urlbar.experiment.unified-urlbar.tipShownCount",
+                                      SHOW_TIP_DEFAULT_COUNT);
     }
 
-    if (this._tipShownCount > 0 && decreaseCounter) {
-      Preferences.set("browser.urlbar.experiment.unified-urlbar.tipShownCount", --this._tipShownCount);
+    if (tipShownCount > 0) {
+      Preferences.set("browser.urlbar.experiment.unified-urlbar.tipShownCount",
+                      --tipShownCount);
     }
-    return this.__shouldShowHint = this._tipShownCount > 0 && this._showSuggestions;
+
+    return tipShownCount > 0 &&
+           Preferences.get("browser.urlbar.suggest.searches", false);
   },
 
-  _initTipElement() {
-    if (!this._shouldShowHint()) {
+  _ensureTipElement() {
+    if (this.tipContainer)
       return;
-    }
 
     let tipContainer = this.document.createElementNS(XUL_NS, "hbox");
     tipContainer.id = "urlbar-tip-container";
@@ -126,17 +125,19 @@ this.Panel.prototype = {
     for (let child of notification.childNodes) {
       child.collapsed = false;
     }
+    this.document.getAnonymousElementByAttribute(this.panelElement, "anonid", "search-suggestions-notification")
+                 .style.visibility = "collapse";
   },
 
   _updateTip() {
-    if (!this._shouldShowHint(true)) {
+    if (!this._shouldShowHint()) {
       if (this.tipContainer) {
         this._uninitTipElement();
-        this.document.getAnonymousElementByAttribute(this.panelElement, "anonid", "search-suggestions-notification")
-                     .style.visibility = "collapse";
       }
       return;
     }
+
+    this._ensureTipElement();
 
     let iconStart = this.panelElement.siteIconStart;
     if (iconStart) {
@@ -359,9 +360,6 @@ this.Panel.prototype = {
         return;
     }
 
-    if (this.selectedButton != this.settingsButton) {
-      Telemetry.incrementValue("oneOffButtonSelectedByKeypress");
-    }
     event.preventDefault();
   },
 
@@ -378,7 +376,7 @@ this.Panel.prototype = {
       return;
     }
     if (this.selectedButton == this.settingsButton) {
-      Telemetry.incrementValue("searchSettingsClicked");
+      UnifiedUrlbar.reportTelemetryValue("searchSettingsClicked");
       this.window.openPreferences("paneSearch");
     } else {
       this._doSearchFromButton(this.selectedButton, event);
@@ -418,7 +416,6 @@ this.Panel.prototype = {
          !target.classList.contains("dummy")) ||
         target.classList.contains("addengine-item") ||
         target.classList.contains("search-setting-button")) {
-      Telemetry.incrementValue("oneOffButtonSelectedByMouseover");
       this.selectedButton = target;
     }
   },
@@ -450,9 +447,9 @@ this.Panel.prototype = {
 
     let win = button.ownerDocument.defaultView;
     if (event instanceof win.KeyboardEvent) {
-      Telemetry.incrementValue("searchByReturnKeyOnOneOffButton", { engine } );
+      UnifiedUrlbar.reportTelemetryValue("searchByReturnKeyOnOneOffButton", { engine } );
     } else if (event instanceof win.MouseEvent) {
-      Telemetry.incrementValue("searchByClickOnOneOffButton", { engine });
+      UnifiedUrlbar.reportTelemetryValue("searchByClickOnOneOffButton", { engine });
     }
 
     let query = this.urlbar.controller.searchString;
@@ -473,8 +470,6 @@ this.Panel.prototype = {
       this.buttonList.firstChild.remove();
     }
 
-    let Preferences =
-      Cu.import("resource://gre/modules/Preferences.jsm", {}).Preferences;
     let pref = Preferences.get("browser.search.hiddenOneOffs");
     let hiddenList = pref ? pref.split(",") : [];
 
@@ -553,14 +548,6 @@ this.Panel.prototype = {
       }
 
       this.buttonList.appendChild(button);
-    }
-
-    // Add a data point for the engine count if it's changed (or this is the
-    // first time reaching here).
-    this._engineCount = this._engineCount || 0;
-    if (engines.length != this._engineCount) {
-      this._engineCount = engines.length;
-      Telemetry.setValue("engineCount", engines.length);
     }
   },
 

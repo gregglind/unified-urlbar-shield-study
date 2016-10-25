@@ -111,7 +111,7 @@
   margin-left: 160px;
   animation-name: buildIn-tip;
   animation-duration: 250ms;
-  animation-delay: 3000ms;
+  animation-delay: 1000ms;
   animation-iteration-count: 1;
   animation-fill-mode: forwards;
 }
@@ -120,7 +120,7 @@
   transform: scale(0);
   animation-name: buildIn-grow;
   animation-duration: 500ms;
-  animation-delay: 2000ms;
+  animation-delay: 750ms;
   animation-iteration-count: 1;
   animation-timing-function: ease-in-out;
   animation-fill-mode: forwards;
@@ -136,7 +136,7 @@
   width: 0;
   animation-name: typing;
   animation-duration: 750ms;
-  animation-delay: 1750ms;
+  animation-delay: 300ms;
   animation-iteration-count: 1;
   animation-fill-mode: forwards;
 }
