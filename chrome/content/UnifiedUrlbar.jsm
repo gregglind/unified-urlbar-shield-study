@@ -35,7 +35,7 @@ this.UnifiedUrlbar = Object.freeze({
     let appInfo = Cc["@mozilla.org/xre/app-info;1"]
                     .getService(Ci.nsIXULAppInfo);
     if (vc.compare(appInfo.version, "51") >= 0) {
-      //return false;
+      return false;
     }
 
     // Exclude users who already removed the search bar from the UI.
@@ -303,35 +303,22 @@ function trackAutocompleteEnter(input) {
   let controller = input.popup.view.QueryInterface(Ci.nsIAutoCompleteController);
 
   let idx = input.popup.selectedIndex;
-/*
-  // Count when the user is direct typing the current engine to search.
-  if (idx <= 0) {
-    try {
-      let uri = Services.uriFixup.createFixupURI(input.textValue, 0);
-      let host = uri.host.replace(/^www./, "");
-      let engineHost = Services.io.newURI(Services.search.currentEngine.searchForm, null, null)
-                                  .host.replace(/^www./, "");
-      if (uri.path == "/" && host == engineHost) {
-        reportTelemetryValue("userTypedCurrentEngine");
-      }
-    } catch (ex) {}
-  }
-*/
   if (idx == -1) {
     return;
   }
   let value = controller.getValueAt(idx);
   let action = input._parseActionUrl(value);
-  let actionType;
+  if (action.type != "searchengine")
+    return;
 
-  if (action) {
-    actionType = action.type == "searchengine" && action.params.searchSuggestion ?
-                    "searchsuggestion" : action.type;
-  }
-  if (actionType == "searchengine") {
-    reportTelemetryValue("searchByDefaultEngine");
-  } else if (actionType == "searchSuggestion") {
+  if ("searchSuggestion" in action.params) {
     reportTelemetryValue("searchBySuggestion");
+  } else if ("alias" in action.params) {
+    let engine = Services.search.getEngineByAlias(action.params.alias);
+    if (engine)
+      reportTelemetryValue("searchByAlias", { engine });
+  } else {
+    reportTelemetryValue("searchByDefaultEngine");
   }
 }
 
@@ -395,11 +382,15 @@ function reportTelemetryValue(key, optionalData={}) {
       recordSearch(optionalData.engine, "urlbar-suggestion");
       break;
     case "searchByDefaultEngine":
-      // Already increments "search" / "urlbar" countable, it must also
-      // increment oneoff countable for the current engine.
-      // We don't have data about mouse or keyboard interaction here yet, so
-      // just pass unknown for the type.
+      // If it's a direct Enter actions it already increments "search" / "urlbar"
+      // countable, so we should only increment oneoff countable for the current
+      // engine (with unknown source, like the searchbar).
       recordOneOff(Services.search.currentEngine, "urlbar", "unknown");
+      break;
+    case "searchByAlias":
+      // Due to 1313080 aliases are not accounted by default, so do that here.
+      recordOneOff(optionalData.engine, "urlbar", "unknown");
+      recordSearch(optionalData.engine, "urlbar");
       break;
     default:
       Cu.reportError("reportTelemetryValue() got an unknown value");
