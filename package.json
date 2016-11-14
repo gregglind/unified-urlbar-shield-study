@@ -1,6 +1,6 @@
 {
   "name": "unified-urlbar-shield-study",
-  "description": "An experimental add-on testing the unified urlbar experience.",
+  "description": "A Shield Study add-on testing the search experience.",
   "version": "2.1.0",
   "author": "Marco Bonardo <mak@mozilla.com>",
   "devDependencies": {
@@ -19,5 +19,5 @@
   },
   "license": "MPL-2.0",
   "main": "lib/index.js",
-  "title": "Unified Urlbar Shield Study"
+  "title": "Search Shield Study"
 }
