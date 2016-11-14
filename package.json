@@ -1,7 +1,7 @@
 {
   "name": "unified-urlbar-shield-study",
   "description": "A Shield Study add-on testing the search experience.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "author": "Marco Bonardo <mak@mozilla.com>",
   "devDependencies": {
     "jpm": "^1.0.7",
