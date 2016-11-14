@@ -1,2 +1,2 @@
-#Unified Urlbar Shield Study
-An experimental add-on testing the unified urlbar experience.
+# Search Shield Study
+A shield Study add-on testing the search experience.
