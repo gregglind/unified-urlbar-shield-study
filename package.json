@@ -1,0 +1,23 @@
+{
+  "name": "unified-urlbar-shield-study",
+  "description": "A Shield Study add-on testing the search experience.",
+  "version": "2.1.1",
+  "author": "Marco Bonardo <mak@mozilla.com>",
+  "devDependencies": {
+    "jpm": "^1.0.7",
+    "shield-studies-addon-utils": "^2.0.0"
+  },
+  "engines": {
+    "firefox": ">=50.0a1"
+  },
+  "keywords": [
+    "jetpack",
+    "shield-study"
+  ],
+  "permissions": {
+    "multiprocess": true
+  },
+  "license": "MPL-2.0",
+  "main": "lib/index.js",
+  "title": "Search Shield Study"
+}
